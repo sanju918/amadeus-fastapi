@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Search - Amadeus API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .search-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .search-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .flight-offer {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .flight-offer:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .flight-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .flight-info {
+            flex: 1;
+        }
+
+        .airline-code {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .flight-number {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .price-section {
+            text-align: right;
+        }
+
+        .price {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .price-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .segments {
+            margin: 20px 0;
+        }
+
+        .segment {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .segment-location {
+            flex: 1;
+        }
+
+        .airport-code {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .terminal {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .time {
+            font-size: 1rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .segment-middle {
+            flex: 1;
+            text-align: center;
+            padding: 0 20px;
+        }
+
+        .duration {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .direct-flight {
+            font-size: 0.8rem;
+            color: #28a745;
+            background: #d4edda;
+            padding: 3px 10px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+        .connecting-flight {
+            font-size: 0.8rem;
+            color: #856404;
+            background: #fff3cd;
+            padding: 3px 10px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+        .amenities {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .amenity {
+            display: flex;
+            align-items: center;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .amenity-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            color: #667eea;
+        }
+
+        .baggage-info {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .baggage-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .baggage-icon {
+            font-size: 1.2rem;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .cabin-class {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #e3f2fd;
+            color: #1976d2;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✈️ Flight Search</h1>
+            <p>Find the best flight offers powered by Amadeus API</p>
+        </div>
+
+        <div class="search-card">
+            <form id="searchForm" class="search-form">
+                <div class="form-group">
+                    <label for="origin">From (Airport Code)</label>
+                    <input type="text" id="origin" name="origin" placeholder="e.g., BOM" required maxlength="3" style="text-transform: uppercase;">
+                </div>
+
+                <div class="form-group">
+                    <label for="destination">To (Airport Code)</label>
+                    <input type="text" id="destination" name="destination" placeholder="e.g., BLR" required maxlength="3" style="text-transform: uppercase;">
+                </div>
+
+                <div class="form-group">
+                    <label for="departureDate">Departure Date</label>
+                    <input type="date" id="departureDate" name="departureDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="returnDate">Return Date (Optional)</label>
+                    <input type="date" id="returnDate" name="returnDate">
+                </div>
+
+                <div class="form-group">
+                    <label for="adults">Adults</label>
+                    <input type="number" id="adults" name="adults" value="1" min="1" max="9">
+                </div>
+
+                <div class="form-group">
+                    <label for="children">Children (Optional)</label>
+                    <input type="number" id="children" name="children" min="0" max="9">
+                </div>
+
+                <div class="form-group">
+                    <label for="max">Max Results</label>
+                    <input type="number" id="max" name="max" value="5" min="1" max="20">
+                </div>
+
+                <div class="form-group">
+                    <label for="airlineCodes">Airline Codes (Optional)</label>
+                    <input type="text" id="airlineCodes" name="airlineCodes" placeholder="e.g., AI,6E,UK">
+                </div>
+            </form>
+            
+            <button type="submit" form="searchForm" class="search-btn" id="searchBtn">
+                🔍 Search Flights
+            </button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="color: white; font-size: 1.1rem;">Searching for flights...</p>
+        </div>
+
+        <div id="error"></div>
+        
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+
+        // Set minimum date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('departureDate').setAttribute('min', today);
+        document.getElementById('returnDate').setAttribute('min', today);
+
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const params = new URLSearchParams();
+            
+            params.append('origin_location_code', formData.get('origin').toUpperCase());
+            params.append('destination_location_code', formData.get('destination').toUpperCase());
+            params.append('departure_date', formData.get('departureDate'));
+            params.append('adults', formData.get('adults'));
+            params.append('max', formData.get('max'));
+            
+            if (formData.get('returnDate')) {
+                params.append('return_date', formData.get('returnDate'));
+            }
+            
+            if (formData.get('children')) {
+                params.append('children', formData.get('children'));
+            }
+            
+            if (formData.get('airlineCodes')) {
+                params.append('included_airline_codes', formData.get('airlineCodes'));
+            }
+            
+            // Show loading
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('results').classList.remove('active');
+            document.getElementById('error').innerHTML = '';
+            document.getElementById('searchBtn').disabled = true;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/flight-offers-search/?${params.toString()}`);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to fetch flights');
+                }
+                
+                displayResults(data);
+            } catch (error) {
+                displayError(error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('searchBtn').disabled = false;
+            }
+        });
+        
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (!data.data || data.data.length === 0) {
+                resultsDiv.innerHTML = '<div class="no-results">No flights found. Try different search criteria.</div>';
+                resultsDiv.classList.add('active');
+                return;
+            }
+            
+            let html = '';
+            
+            data.data.forEach((offer, index) => {
+                const itinerary = offer.itineraries[0];
+                const segments = itinerary.segments;
+                const firstSegment = segments[0];
+                const lastSegment = segments[segments.length - 1];
+                const price = offer.price;
+                const travelerPricing = offer.travelerPricings[0];
+                
+                html += `
+                    <div class="flight-offer">
+                        <div class="flight-header">
+                            <div class="flight-info">
+                                <div class="airline-code">${firstSegment.carrierCode} ${firstSegment.number}</div>
+                                <div class="flight-number">
+                                    ${offer.validatingAirlineCodes.join(', ')} • 
+                                    ${segments.length === 1 ? 'Direct Flight' : segments.length + ' stops'}
+                                    <span class="cabin-class">${travelerPricing.fareDetailsBySegment[0].cabin}</span>
+                                </div>
+                            </div>
+                            <div class="price-section">
+                                <div class="price">${price.currency} ${price.total}</div>
+                                <div class="price-label">Total Price</div>
+                            </div>
+                        </div>
+                        
+                        <div class="segments">
+                            ${segments.map(segment => `
+                                <div class="segment">
+                                    <div class="segment-location">
+                                        <div class="airport-code">${segment.departure.iataCode}</div>
+                                        ${segment.departure.terminal ? `<div class="terminal">Terminal ${segment.departure.terminal}</div>` : ''}
+                                        <div class="time">${formatTime(segment.departure.at)}</div>
+                                    </div>
+                                    
+                                    <div class="segment-middle">
+                                        <div class="duration">${formatDuration(segment.duration)}</div>
+                                        <div class="${segment.numberOfStops === 0 ? 'direct-flight' : 'connecting-flight'}">
+                                            ${segment.numberOfStops === 0 ? '✓ Direct' : segment.numberOfStops + ' stop(s)'}
+                                        </div>
+                                        <div style="margin-top: 5px; font-size: 0.85rem; color: #666;">
+                                            ${segment.carrierCode} ${segment.number} • ${segment.aircraft.code}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="segment-location">
+                                        <div class="airport-code">${segment.arrival.iataCode}</div>
+                                        ${segment.arrival.terminal ? `<div class="terminal">Terminal ${segment.arrival.terminal}</div>` : ''}
+                                        <div class="time">${formatTime(segment.arrival.at)}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        ${travelerPricing.fareDetailsBySegment[0].includedCheckedBags || travelerPricing.fareDetailsBySegment[0].includedCabinBags ? `
+                            <div class="baggage-info">
+                                ${travelerPricing.fareDetailsBySegment[0].includedCheckedBags ? `
+                                    <div class="baggage-item">
+                                        <span class="baggage-icon">🧳</span>
+                                        <span>Checked: ${travelerPricing.fareDetailsBySegment[0].includedCheckedBags.weight} ${travelerPricing.fareDetailsBySegment[0].includedCheckedBags.weightUnit}</span>
+                                    </div>
+                                ` : ''}
+                                ${travelerPricing.fareDetailsBySegment[0].includedCabinBags ? `
+                                    <div class="baggage-item">
+                                        <span class="baggage-icon">👜</span>
+                                        <span>Cabin: ${travelerPricing.fareDetailsBySegment[0].includedCabinBags.weight} ${travelerPricing.fareDetailsBySegment[0].includedCabinBags.weightUnit}</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        ` : ''}
+                        
+                        ${travelerPricing.fareDetailsBySegment[0].amenities ? `
+                            <div class="amenities">
+                                ${travelerPricing.fareDetailsBySegment[0].amenities.slice(0, 4).map(amenity => `
+                                    <div class="amenity">
+                                        <span class="amenity-icon">${amenity.isChargeable ? '💰' : '✓'}</span>
+                                        <span>${amenity.description}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+            resultsDiv.classList.add('active');
+        }
+        
+        function displayError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.innerHTML = `<div class="error"><strong>Error:</strong> ${message}</div>`;
+        }
+        
+        function formatTime(dateTimeString) {
+            const date = new Date(dateTimeString);
+            const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+            const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            return `${timeStr} • ${dateStr}`;
+        }
+        
+        function formatDuration(duration) {
+            // Parse ISO 8601 duration format (e.g., PT1H45M)
+            const match = duration.match(/PT(\d+H)?(\d+M)?/);
+            if (!match) return duration;
+            
+            const hours = match[1] ? match[1].replace('H', 'h ') : '';
+            const minutes = match[2] ? match[2].replace('M', 'm') : '';
+            
+            return hours + minutes;
+        }
+    </script>
+</body>
+</html>
