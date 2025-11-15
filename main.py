@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from app.apis.flight_offers_search import router as flight_offers_router, airline_router
 
 app = FastAPI(
@@ -20,7 +21,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to FastAPI with UV!"}
+    return FileResponse("static/index.html")
 
 @app.get("/health")
 async def health_check():
