@@ -1,0 +1,236 @@
+{
+    "data": {
+        "type": "flight-offers-pricing",
+        "flightOffers": [
+            {
+                "type": "flight-offer",
+                "id": "1",
+                "source": "GDS",
+                "instantTicketingRequired": false,
+                "nonHomogeneous": false,
+                "paymentCardRequired": false,
+                "lastTicketingDate": "2025-11-29",
+                "itineraries": [
+                    {
+                        "segments": [
+                            {
+                                "departure": {
+                                    "iataCode": "CDG",
+                                    "at": "2025-11-29T15:25:00"
+                                },
+                                "arrival": {
+                                    "iataCode": "HEL",
+                                    "at": "2025-11-29T19:20:00"
+                                },
+                                "carrierCode": "6X",
+                                "number": "3618",
+                                "aircraft": {
+                                    "code": "733"
+                                },
+                                "operating": {
+                                    "carrierCode": "6X"
+                                },
+                                "duration": "PT2H55M",
+                                "id": "3",
+                                "numberOfStops": 0,
+                                "co2Emissions": [
+                                    {
+                                        "weight": 175,
+                                        "weightUnit": "KG",
+                                        "cabin": "ECONOMY"
+                                    }
+                                ]
+                            },
+                            {
+                                "departure": {
+                                    "iataCode": "HEL",
+                                    "at": "2025-11-30T17:30:00"
+                                },
+                                "arrival": {
+                                    "iataCode": "ICN",
+                                    "at": "2025-12-01T08:20:00"
+                                },
+                                "carrierCode": "6X",
+                                "number": "3605",
+                                "aircraft": {
+                                    "code": "733"
+                                },
+                                "operating": {
+                                    "carrierCode": "6X"
+                                },
+                                "duration": "PT7H50M",
+                                "id": "4",
+                                "numberOfStops": 0,
+                                "co2Emissions": [
+                                    {
+                                        "weight": 295,
+                                        "weightUnit": "KG",
+                                        "cabin": "ECONOMY"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "price": {
+                    "currency": "EUR",
+                    "total": "287.96",
+                    "base": "122.00",
+                    "fees": [
+                        {
+                            "amount": "0.00",
+                            "type": "SUPPLIER"
+                        },
+                        {
+                            "amount": "0.00",
+                            "type": "TICKETING"
+                        },
+                        {
+                            "amount": "0.00",
+                            "type": "FORM_OF_PAYMENT"
+                        }
+                    ],
+                    "grandTotal": "287.96",
+                    "billingCurrency": "EUR"
+                },
+                "pricingOptions": {
+                    "fareType": [
+                        "PUBLISHED"
+                    ],
+                    "includedCheckedBagsOnly": true
+                },
+                "validatingAirlineCodes": [
+                    "6X"
+                ],
+                "travelerPricings": [
+                    {
+                        "travelerId": "1",
+                        "fareOption": "STANDARD",
+                        "travelerType": "ADULT",
+                        "price": {
+                            "currency": "EUR",
+                            "total": "143.98",
+                            "base": "61.00",
+                            "taxes": [
+                                {
+                                    "amount": "40.00",
+                                    "code": "O4"
+                                },
+                                {
+                                    "amount": "5.83",
+                                    "code": "WL"
+                                },
+                                {
+                                    "amount": "13.95",
+                                    "code": "QX"
+                                },
+                                {
+                                    "amount": "22.30",
+                                    "code": "FR"
+                                },
+                                {
+                                    "amount": "0.90",
+                                    "code": "XU"
+                                }
+                            ],
+                            "refundableTaxes": "82.98"
+                        },
+                        "fareDetailsBySegment": [
+                            {
+                                "segmentId": "3",
+                                "cabin": "ECONOMY",
+                                "fareBasis": "YCNV1",
+                                "class": "Y",
+                                "includedCheckedBags": {
+                                    "quantity": 1
+                                }
+                            },
+                            {
+                                "segmentId": "4",
+                                "cabin": "ECONOMY",
+                                "fareBasis": "YCNV1",
+                                "class": "Y",
+                                "includedCheckedBags": {
+                                    "quantity": 1
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "travelerId": "2",
+                        "fareOption": "STANDARD",
+                        "travelerType": "ADULT",
+                        "price": {
+                            "currency": "EUR",
+                            "total": "143.98",
+                            "base": "61.00",
+                            "taxes": [
+                                {
+                                    "amount": "40.00",
+                                    "code": "O4"
+                                },
+                                {
+                                    "amount": "5.83",
+                                    "code": "WL"
+                                },
+                                {
+                                    "amount": "13.95",
+                                    "code": "QX"
+                                },
+                                {
+                                    "amount": "22.30",
+                                    "code": "FR"
+                                },
+                                {
+                                    "amount": "0.90",
+                                    "code": "XU"
+                                }
+                            ],
+                            "refundableTaxes": "82.98"
+                        },
+                        "fareDetailsBySegment": [
+                            {
+                                "segmentId": "3",
+                                "cabin": "ECONOMY",
+                                "fareBasis": "YCNV1",
+                                "class": "Y",
+                                "includedCheckedBags": {
+                                    "quantity": 1
+                                }
+                            },
+                            {
+                                "segmentId": "4",
+                                "cabin": "ECONOMY",
+                                "fareBasis": "YCNV1",
+                                "class": "Y",
+                                "includedCheckedBags": {
+                                    "quantity": 1
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "bookingRequirements": {
+            "emailAddressRequired": true,
+            "mobilePhoneNumberRequired": true
+        }
+    },
+    "dictionaries": {
+        "locations": {
+            "ICN": {
+                "cityCode": "SEL",
+                "countryCode": "KR"
+            },
+            "CDG": {
+                "cityCode": "PAR",
+                "countryCode": "FR"
+            },
+            "HEL": {
+                "cityCode": "HEL",
+                "countryCode": "FI"
+            }
+        }
+    }
+}
