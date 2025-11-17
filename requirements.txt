@@ -5,4 +5,9 @@ httpx
 requests
 pydantic
 amadeus
+python-jose[cryptography]
+passlib[argon2]
+email-validator
 pydotenv
+passlib
+argon2-cffi

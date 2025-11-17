@@ -1,8 +1,9 @@
 import datetime
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from app.core.client import amadeus, ResponseError
+from app.apis.auth_routes import get_current_user
 
 router = APIRouter(prefix="/flight-offers-search", tags=["Flight Offers Search"])
 
@@ -88,6 +89,14 @@ class FlightOfferSearch(BaseModel):
     # sources: Optional[List[str]] = ["GDS"]
     # searchCriteria: Optional[SearchCriteria] = None
 
+
+class FlightOfferPricingRequest(BaseModel):
+    flightOfferData: Dict[str, Any]
+
+
+class FlightCreateOrderRequest(BaseModel):
+    orderData: Dict[str, Any]
+
 @router.get("/")
 async def get_flight_offers(
     origin_location_code: str,
@@ -97,7 +106,8 @@ async def get_flight_offers(
     adults: int = 1,
     children: Optional[int] = None,
     included_airline_codes: Optional[str] = None,
-    max: int = 5
+    max: int = 5,
+    current_user_id: int = Depends(get_current_user)
 ):
     """
     Get flight offers using the Amadeus API with GET parameters.
@@ -154,121 +164,236 @@ async def get_flight_offers(
             detail=f"Internal server error: {str(e)}"
         )
 
-@router.post("/")
-async def search_flight_offers(search_request: FlightSearchRequest):
-    """
-    Search for flight offers using the Amadeus API.
-    
-    This endpoint uses the official Amadeus Flight Offers Search API with POST method.
-    
-    Example Request:
-    ```json
-    {
-      "currencyCode": "USD",
-      "originDestinations": [
-        {
-          "id": "1",
-          "originLocationCode": "JFK",
-          "destinationLocationCode": "LAX",
-          "departureDateTimeRange": {
-            "date": "2024-12-15",
-            "time": "10:00:00"
-          }
-        },
-        {
-          "id": "2", 
-          "originLocationCode": "LAX",
-          "destinationLocationCode": "JFK",
-          "departureDateTimeRange": {
-            "date": "2024-12-22",
-            "time": "18:00:00"
-          }
-        }
-      ],
-      "travelers": [
-        {
-          "id": "1",
-          "travelerType": "ADULT"
-        },
-        {
-          "id": "2", 
-          "travelerType": "ADULT"
-        }
-      ],
-      "sources": ["GDS"],
-      "searchCriteria": {
-        "excludeAllotments": true,
-        "addOneWayOffers": false,
-        "maxFlightOffers": 20,
-        "allowAlternativeFareOptions": true,
-        "oneFlightOfferPerDay": false,
-        "additionalInformation": {
-          "chargeableCheckedBags": true,
-          "brandedFares": true,
-          "fareRules": false
-        },
-        "pricingOptions": {
-          "includedCheckedBagsOnly": false
-        },
-        "flightFilters": {
-          "crossBorderAllowed": true,
-          "moreOvernightsAllowed": true,
-          "returnToDepartureAirport": true,
-          "railSegmentAllowed": false,
-          "busSegmentAllowed": false,
-          "carrierRestrictions": {
-            "blacklistedInEUAllowed": false,
-            "includedCarrierCodes": ["AA", "DL", "UA"]
-          },
-          "cabinRestrictions": [
-            {
-              "cabin": "ECONOMY",
-              "coverage": "MOST_SEGMENTS",
-              "originDestinationIds": ["1", "2"]
-            }
-          ],
-          "connectionRestriction": {
-            "airportChangeAllowed": true,
-            "technicalStopsAllowed": false
-          }
-        }
-      }
-    }
-    ```
-    
-    Parameters:
-    - currencyCode: Currency code for prices (e.g., 'USD', 'EUR', 'ZAR')
-    - originDestinations: List of origin-destination pairs with departure dates
-    - travelers: List of travelers with their types (ADULT, CHILD, HELD_INFANT, INFANT)
-    - sources: List of sources (default: ["GDS"])
-    - searchCriteria: Search filters and options
-    """
+@router.post("/pricing")
+async def flight_offers_pricing(
+    request: FlightOfferPricingRequest,
+    current_user_id: int = Depends(get_current_user)
+):
     try:
-        # Convert Pydantic model to dict for API call
-        body = search_request.model_dump(exclude_unset=True)
-        
-        # Make the API call using POST method
-        response = amadeus.shopping.flight_offers_search.post(body)
-        
+        response = amadeus.shopping.flight_offers.pricing.post(request.flightOfferData)
+
         return {
             "success": True,
             "data": response.data,
-            "meta": response.meta if hasattr(response, 'meta') else None
+            "meta": response.meta if hasattr(response, "meta") else None,
         }
-        
+
     except ResponseError as error:
         raise HTTPException(
-            status_code=error.status_code if hasattr(error, 'status_code') else 400,
-            detail=str(error)
+            status_code=error.status_code if hasattr(error, "status_code") else 400,
+            detail=str(error),
         )
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Internal server error: {str(e)}"
+            detail=f"Internal server error: {str(e)}",
         )
 
-@router.get("/example")
-async def get_example_search():
+
+@router.post("/orders")
+async def create_flight_order(
+    request: FlightCreateOrderRequest,
+    current_user_id: int = Depends(get_current_user)
+):
+    try:
+        import json
+        # The frontend sends: {"orderData": {"data": {...}}}
+        # So request.orderData is {"data": {...}}
+        # The Amadeus SDK expects: {"data": {"type": "flight-order", "flightOffers": [...], "travelers": [...], ...}}
+        order_data = request.orderData
+        
+        print("=== BOOKING REQUEST ===")
+        print("Order data received:", json.dumps(order_data, indent=2)[:2000])
+        
+        # Validate that we have the correct structure
+        if 'data' not in order_data:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing 'data' key in orderData"
+            )
+        
+        inner_data = order_data['data']
+        
+        # Validate flight offer structure - the flightOfferPriceData should have all required fields
+        if 'flightOffers' not in inner_data or len(inner_data['flightOffers']) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing or empty flightOffers array"
+            )
+        
+        flight_offers = inner_data['flightOffers']
+        first_offer = flight_offers[0]
+        
+        # Validate required fields in flightOfferPriceData
+        required_fields = ['type', 'id', 'source', 'validatingAirlineCodes', 'itineraries', 'travelerPricings']
+        missing_fields = [field for field in required_fields if field not in first_offer or not first_offer[field]]
+        
+        if missing_fields:
+            print(f"WARNING: Missing fields in flightOfferPriceData: {missing_fields}")
+            print("Flight offer keys:", list(first_offer.keys()) if isinstance(first_offer, dict) else "Not a dict")
+        
+        print("Flight offer validation:")
+        print("  - Has type:", 'type' in first_offer if isinstance(first_offer, dict) else False, f"({first_offer.get('type', 'N/A')})")
+        print("  - Has id:", 'id' in first_offer if isinstance(first_offer, dict) else False, f"({first_offer.get('id', 'N/A')})")
+        print("  - Has source:", 'source' in first_offer if isinstance(first_offer, dict) else False, f"({first_offer.get('source', 'N/A')})")
+        print("  - Has validatingAirlineCodes:", 'validatingAirlineCodes' in first_offer if isinstance(first_offer, dict) else False)
+        print("  - Has itineraries:", 'itineraries' in first_offer if isinstance(first_offer, dict) else False)
+        print("  - Has travelerPricings:", 'travelerPricings' in first_offer if isinstance(first_offer, dict) else False)
+        
+        # According to Amadeus API documentation:
+        # https://developers.amadeus.com/self-service/category/flights/api-doc/flight-create-orders/api-reference
+        # The request body should be: {"data": {"type": "flight-order", "flightOffers": [...], "travelers": [...], ...}}
+        # order_data is already {"data": {...}}, so pass it directly
+        # The travelers are already inside order_data['data']['travelers'], so no need to pass separately
+        
+        print("Request body being sent to Amadeus (first 2000 chars):", json.dumps(order_data, indent=2)[:2000])
+        
+        # The Amadeus SDK's post method expects the full request body
+        # According to the official API docs, the body is {"data": {...}}
+        # Pass order_data directly which matches this format
+        response = amadeus.booking.flight_orders.post(order_data)
+
+        return {
+            "success": True,
+            "data": response.data,
+            "meta": response.meta if hasattr(response, "meta") else None,
+        }
+
+    except ResponseError as error:
+        error_detail: Any = str(error)
+        try:
+            if hasattr(error, "response") and hasattr(error.response, "body"):
+                import json  # type: ignore
+
+                error_detail = json.loads(error.response.body)
+        except Exception:
+            error_detail = str(error)
+
+        raise HTTPException(
+            status_code=error.status_code if hasattr(error, "status_code") else 400,
+            detail=error_detail,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}",
+        )
+
+# @router.post("/")
+# async def search_flight_offers(search_request: FlightSearchRequest):
+#     """
+#     Search for flight offers using the Amadeus API.
+    
+#     This endpoint uses the official Amadeus Flight Offers Search API with POST method.
+    
+#     Example Request:
+#     ```json
+#     {
+#       "currencyCode": "USD",
+#       "originDestinations": [
+#         {
+#           "id": "1",
+#           "originLocationCode": "JFK",
+#           "destinationLocationCode": "LAX",
+#           "departureDateTimeRange": {
+#             "date": "2024-12-15",
+#             "time": "10:00:00"
+#           }
+#         },
+#         {
+#           "id": "2", 
+#           "originLocationCode": "LAX",
+#           "destinationLocationCode": "JFK",
+#           "departureDateTimeRange": {
+#             "date": "2024-12-22",
+#             "time": "18:00:00"
+#           }
+#         }
+#       ],
+#       "travelers": [
+#         {
+#           "id": "1",
+#           "travelerType": "ADULT"
+#         },
+#         {
+#           "id": "2", 
+#           "travelerType": "ADULT"
+#         }
+#       ],
+#       "sources": ["GDS"],
+#       "searchCriteria": {
+#         "excludeAllotments": true,
+#         "addOneWayOffers": false,
+#         "maxFlightOffers": 20,
+#         "allowAlternativeFareOptions": true,
+#         "oneFlightOfferPerDay": false,
+#         "additionalInformation": {
+#           "chargeableCheckedBags": true,
+#           "brandedFares": true,
+#           "fareRules": false
+#         },
+#         "pricingOptions": {
+#           "includedCheckedBagsOnly": false
+#         },
+#         "flightFilters": {
+#           "crossBorderAllowed": true,
+#           "moreOvernightsAllowed": true,
+#           "returnToDepartureAirport": true,
+#           "railSegmentAllowed": false,
+#           "busSegmentAllowed": false,
+#           "carrierRestrictions": {
+#             "blacklistedInEUAllowed": false,
+#             "includedCarrierCodes": ["AA", "DL", "UA"]
+#           },
+#           "cabinRestrictions": [
+#             {
+#               "cabin": "ECONOMY",
+#               "coverage": "MOST_SEGMENTS",
+#               "originDestinationIds": ["1", "2"]
+#             }
+#           ],
+#           "connectionRestriction": {
+#             "airportChangeAllowed": true,
+#             "technicalStopsAllowed": false
+#           }
+#         }
+#       }
+#     }
+#     ```
+    
+#     Parameters:
+#     - currencyCode: Currency code for prices (e.g., 'USD', 'EUR', 'ZAR')
+#     - originDestinations: List of origin-destination pairs with departure dates
+#     - travelers: List of travelers with their types (ADULT, CHILD, HELD_INFANT, INFANT)
+#     - sources: List of sources (default: ["GDS"])
+#     - searchCriteria: Search filters and options
+#     """
+#     try:
+#         # Convert Pydantic model to dict for API call
+#         body = search_request.model_dump(exclude_unset=True)
+        
+#         # Make the API call using POST method
+#         response = amadeus.shopping.flight_offers_search.post(body)
+        
+#         return {
+#             "success": True,
+#             "data": response.data,
+#             "meta": response.meta if hasattr(response, 'meta') else None
+#         }
+        
+#     except ResponseError as error:
+#         raise HTTPException(
+#             status_code=error.status_code if hasattr(error, 'status_code') else 400,
+#             detail=str(error)
+#         )
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"Internal server error: {str(e)}"
+#         )
+
+# @router.get("/example")
+# async def get_example_search():
     """
     Get an example flight search result to test the API using the official format.
     """
@@ -377,7 +502,10 @@ async def get_example_search():
 
 # Airline Destinations Endpoints
 @airline_router.get("/destinations/{airline_code}")
-async def get_airline_destinations(airline_code: str):
+async def get_airline_destinations(
+    airline_code: str,
+    current_user_id: int = Depends(get_current_user)
+):
     """
     Get all destinations served by a specific airline.
     
